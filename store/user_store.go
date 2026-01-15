@@ -1,6 +1,8 @@
 package store
 
 import (
+	"errors"  // errors.New() se custom error return karte hain
+	"strings" // TrimSpace() ke liye
 	"sync"
 
 	"github.com/tejasva-vardhan/go-user-api/model"
@@ -46,23 +48,49 @@ func NewUserStore() *UserStore{
 	}
 }
 
-func (s *UserStore) CreateUser(user model.User) model.User {
+func (s *UserStore) CreateUser(user model.User) (model.User, error) {
 
-	// Lock lagate hain taaki data race na ho
+	// Lock lagate hain taaki map safe rahe (data race na ho)
 	s.mu.Lock()
+
+	// Function end hote hi unlock ho jaaye
 	defer s.mu.Unlock()
 
-	// User ko ID assign kar rahe hain
+	// -------------------------
+	// Basic Validation Start
+	// -------------------------
+
+	// Name clean: extra spaces hatao
+	user.Name = strings.TrimSpace(user.Name)
+
+	// Email clean: extra spaces hatao
+	user.Email = strings.TrimSpace(user.Email)
+
+	// Name empty hai to error
+	if user.Name == "" {
+		return model.User{}, errors.New("name is required")
+	}
+
+	// Email empty hai to error
+	if user.Email == "" {
+		return model.User{}, errors.New("email is required")
+	}
+
+	// -------------------------
+	// Basic Validation End
+	// -------------------------
+
+	// ID assign karo
 	user.ID = s.nextID
 
-	// Map me user store kar rahe hain
-	s.users[s.nextID] = user
+	// Map me save karo
+	s.users[user.ID] = user
 
-	// nextID increment kar rahe hain
+	// nextID increment karo
 	s.nextID++
 
-	// Created user return kar rahe hain
-	return user
+	// created user return
+	return user, nil
 }
 
 
