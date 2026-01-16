@@ -1,23 +1,27 @@
 package main
 
 import (
-	"fmt"
+	"log"
 	"net/http"
 
 	// Apna handler package import kar rahe hain
 	"github.com/tejasva-vardhan/go-user-api/handler"
+	"github.com/tejasva-vardhan/go-user-api/store"
 )
 
 func main() {
 
-	// /health endpoint ko handler package ke function se connect kar rahe hain
-	http.HandleFunc("/health", handler.HealthHandler)
+    // (1) Store create
+    userStore := store.NewUserStore()
 
-	fmt.Println("Server starting on port 8080...")
+    // (2) Handler create (store inject)
+    userHandler := handler.NewUserHandler(userStore)
 
-	// Server start kar rahe hain
-	err := http.ListenAndServe(":8080", nil)
-	if err != nil {
-		fmt.Println("Server failed to start:", err)
-	}
+    // (3) Routes register
+    http.HandleFunc("/health", handler.HealthHandler)
+    http.HandleFunc("/users", userHandler.CreateUserHandler)
+
+    // (4) Server start (THIS LINE BLOCKS)
+    log.Fatal(http.ListenAndServe(":8080", nil))
 }
+
