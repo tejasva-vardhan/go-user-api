@@ -3,7 +3,9 @@ package handler
 import (
 	"encoding/json" // JSON decode/encode ke liye
 	"net/http"      // HTTP methods + status codes
+    "strconv" // string to int convert
 
+	"strings" // string manipulation
 	"github.com/tejasva-vardhan/go-user-api/model"
 	"github.com/tejasva-vardhan/go-user-api/store"
 )
@@ -57,39 +59,44 @@ func (h *UserHandler) UsersHandler(w http.ResponseWriter,r *http.Request){
 	}
 
 }
+// UserByIDHandler GET /users/{id} handle karega
+func (h *UserHandler) UserByIDHandler(w http.ResponseWriter, r *http.Request) {
 
-// CreateUserHandler POST /users handle karega
-func (h *UserHandler) CreateUserHandler(w http.ResponseWriter, r *http.Request) {
-
-	// 1) Sirf POST allow
-	if r.Method != http.MethodPost {
+	// sirf GET allow
+	if r.Method != http.MethodGet {
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-	// 2) Response JSON me bhejna hai
+	// JSON response
 	w.Header().Set("Content-Type", "application/json")
 
-	// 3) Request body JSON decode
-	var input model.User // yaha input aayega (id empty hoga)
+	// URL example: /users/5
+	// hume id part chahiye => "5"
+	idStr := strings.TrimPrefix(r.URL.Path, "/users/")
 
-	err := json.NewDecoder(r.Body).Decode(&input)
-	if err != nil {
-		http.Error(w, "Invalid JSON body", http.StatusBadRequest)
+	// idStr empty hua => matlab path "/users/" aaya (invalid for this handler)
+	if idStr == "" {
+		http.Error(w, "User ID is required", http.StatusBadRequest)
 		return
 	}
 
-	// 4) Store se create karvao
-	createdUser, err := h.Store.CreateUser(input)
+	// string -> int convert
+	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		// validation fail => 400
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		http.Error(w, "User ID must be a number", http.StatusBadRequest)
 		return
 	}
 
-	// 5) Success => 201 Created
-	w.WriteHeader(http.StatusCreated)
+	// store se user fetch
+	user, exists := h.Store.GetUserByID(id)
+	if !exists {
+		http.Error(w, "user not found", http.StatusNotFound)
+		return
+	}
 
-	// 6) Created user JSON me return
-	json.NewEncoder(w).Encode(createdUser)
+	// success => 200 + user JSON
+	json.NewEncoder(w).Encode(user)
 }
+
+

@@ -111,6 +111,21 @@ func (s *UserStore) GetAllUsers() []model.User {
 	// list return
 	return result
 }
+// GetUserByID ek specific user return karta hai by id
+func (s *UserStore) GetUserByID(id int) (model.User, bool) {
+
+	// lock => safe read
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	// map se user nikalo
+	user, exists := s.users[id]
+
+	// exists true => user mila
+	// exists false => user nahi mila
+	return user, exists
+}
+
 
 
 
