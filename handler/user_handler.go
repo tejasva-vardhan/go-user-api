@@ -59,44 +59,63 @@ func (h *UserHandler) UsersHandler(w http.ResponseWriter,r *http.Request){
 	}
 
 }
-// UserByIDHandler GET /users/{id} handle karega
+// UserByIDHandler GET /users/{id} and DELETE /users/{id} handle karega
 func (h *UserHandler) UserByIDHandler(w http.ResponseWriter, r *http.Request) {
-
-	// sirf GET allow
-	if r.Method != http.MethodGet {
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-		return
-	}
 
 	// JSON response
 	w.Header().Set("Content-Type", "application/json")
 
 	// URL example: /users/5
-	// hume id part chahiye => "5"
+	// id part nikalna => "5"
 	idStr := strings.TrimPrefix(r.URL.Path, "/users/")
 
-	// idStr empty hua => matlab path "/users/" aaya (invalid for this handler)
+	// empty id => invalid
 	if idStr == "" {
 		http.Error(w, "User ID is required", http.StatusBadRequest)
 		return
 	}
 
-	// string -> int convert
+	// string -> int
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
 		http.Error(w, "User ID must be a number", http.StatusBadRequest)
 		return
 	}
 
-	// store se user fetch
-	user, exists := h.Store.GetUserByID(id)
-	if !exists {
-		http.Error(w, "user not found", http.StatusNotFound)
+	// METHOD SWITCH
+	switch r.Method {
+
+	// GET /users/{id}
+	case http.MethodGet:
+		user, exists := h.Store.GetUserByID(id)
+		if !exists {
+			http.Error(w, "user not found", http.StatusNotFound)
+			return
+		}
+
+		json.NewEncoder(w).Encode(user)
+		return
+
+	// DELETE /users/{id}
+	case http.MethodDelete:
+		deleted := h.Store.DeleteUserByID(id)
+		if !deleted {
+			http.Error(w, "user not found", http.StatusNotFound)
+			return
+		}
+
+		// success response
+		json.NewEncoder(w).Encode(map[string]string{
+			"message": "user deleted",
+		})
+		return
+
+	// other methods not allowed
+	default:
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 		return
 	}
-
-	// success => 200 + user JSON
-	json.NewEncoder(w).Encode(user)
 }
+
 
 

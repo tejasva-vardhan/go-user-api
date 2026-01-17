@@ -125,6 +125,25 @@ func (s *UserStore) GetUserByID(id int) (model.User, bool) {
 	// exists false => user nahi mila
 	return user, exists
 }
+// DeleteUserByID given id wala user delete karta hai
+func (s *UserStore) DeleteUserByID(id int) bool {
+
+	// lock => safe write
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	// check if exists
+	_, exists := s.users[id]
+	if !exists {
+		return false // user nahi mila
+	}
+
+	// delete from map
+	delete(s.users, id)
+
+	return true // delete success
+}
+
 
 
 
