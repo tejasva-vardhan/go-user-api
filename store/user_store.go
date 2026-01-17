@@ -143,6 +143,44 @@ func (s *UserStore) DeleteUserByID(id int) bool {
 
 	return true // delete success
 }
+// UpdateUserByID given id wale user ko update karta hai
+func (s *UserStore) UpdateUserByID(id int, input model.User) (model.User, bool, error) {
+
+	// lock => safe write
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	// check if user exists
+	_, exists := s.users[id]
+	if !exists {
+		return model.User{}, false, nil
+	}
+
+	// clean input
+	input.Name = strings.TrimSpace(input.Name)
+	input.Email = strings.TrimSpace(input.Email)
+
+	// validation
+	if input.Name == "" {
+		return model.User{}, true, errors.New("name is required")
+	}
+	if input.Email == "" {
+		return model.User{}, true, errors.New("email is required")
+	}
+
+	// create updated user (id fixed)
+	updated := model.User{
+		ID:    id,
+		Name:  input.Name,
+		Email: input.Email,
+	}
+
+	// save back
+	s.users[id] = updated
+
+	return updated, true, nil
+}
+
 
 
 

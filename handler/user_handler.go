@@ -2,120 +2,194 @@ package handler
 
 import (
 	"encoding/json" // JSON decode/encode ke liye
-	"net/http"      // HTTP methods + status codes
-    "strconv" // string to int convert
+	"net/http"      // HTTP methods + status codes ke liye
+	"strconv"       // string -> int convert karne ke liye
+	"strings"       // URL se id extract karne ke liye
 
-	"strings" // string manipulation
-	"github.com/tejasva-vardhan/go-user-api/model"
-	"github.com/tejasva-vardhan/go-user-api/store"
+	"github.com/tejasva-vardhan/go-user-api/model" // User struct
+	"github.com/tejasva-vardhan/go-user-api/store" // Store methods
 )
 
-// UserHandler HTTP layer ko store layer se connect karta hai
+// UserHandler ka kaam: HTTP request ko store se connect karna
 type UserHandler struct {
-	Store *store.UserStore // store dependency
+	Store *store.UserStore // Store dependency (data yahi handle karega)
 }
 
-// NewUserHandler handler ka constructor hai
+// NewUserHandler constructor: store attach karke handler return karta hai
 func NewUserHandler(s *store.UserStore) *UserHandler {
 	return &UserHandler{
-		Store: s, // store attach
+		Store: s, // handler ke andar store set
 	}
 }
-func (h *UserHandler) UsersHandler(w http.ResponseWriter,r *http.Request){
-	w.Header().Set("Content-Type","application/json")
 
-	switch r.Method{
-	case http.MethodGet:
-		users:=h.Store.GetAllUsers()
-		json.NewEncoder(w).Encode(users)
+// UsersHandler /users route handle karega
+// GET  /users  -> list all users
+// POST /users  -> create user
+func (h *UserHandler) UsersHandler(w http.ResponseWriter, r *http.Request) {
 
-	case http.MethodPost:
-		// 3) Request body JSON decode
-	var input model.User // yaha input aayega (id empty hoga)
-
-	err := json.NewDecoder(r.Body).Decode(&input)
-	if err != nil {
-		http.Error(w, "Invalid JSON body", http.StatusBadRequest)
-		return
-	}
-
-	// 4) Store se create karvao
-	createdUser, err := h.Store.CreateUser(input)
-	if err != nil {
-		// validation fail => 400
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	// 5) Success => 201 Created
-	w.WriteHeader(http.StatusCreated)
-
-	// 6) Created user JSON me return
-	json.NewEncoder(w).Encode(createdUser)
-	return
-		default:
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-}
-// UserByIDHandler GET /users/{id} and DELETE /users/{id} handle karega
-func (h *UserHandler) UserByIDHandler(w http.ResponseWriter, r *http.Request) {
-
-	// JSON response
+	// Response JSON me bhejna hai
 	w.Header().Set("Content-Type", "application/json")
 
-	// URL example: /users/5
-	// id part nikalna => "5"
-	idStr := strings.TrimPrefix(r.URL.Path, "/users/")
-
-	// empty id => invalid
-	if idStr == "" {
-		http.Error(w, "User ID is required", http.StatusBadRequest)
-		return
-	}
-
-	// string -> int
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		http.Error(w, "User ID must be a number", http.StatusBadRequest)
-		return
-	}
-
-	// METHOD SWITCH
+	// Method ke basis pe decide karenge kya karna hai
 	switch r.Method {
 
-	// GET /users/{id}
+	// -----------------------------
+	// GET /users => List all users
+	// -----------------------------
 	case http.MethodGet:
-		user, exists := h.Store.GetUserByID(id)
-		if !exists {
-			http.Error(w, "user not found", http.StatusNotFound)
+
+		// Store se saare users nikaal lo
+		users := h.Store.GetAllUsers()
+
+		// JSON me encode karke response bhej do
+		json.NewEncoder(w).Encode(users)
+		return
+
+	// -----------------------------
+	// POST /users => Create new user
+	// -----------------------------
+	case http.MethodPost:
+
+		// Input struct jisme JSON decode hoga
+		var input model.User
+
+		// Request body JSON ko struct me convert kar rahe hain
+		err := json.NewDecoder(r.Body).Decode(&input)
+		if err != nil {
+			// Invalid JSON => 400
+			http.Error(w, "Invalid JSON body", http.StatusBadRequest)
 			return
 		}
 
-		json.NewEncoder(w).Encode(user)
-		return
-
-	// DELETE /users/{id}
-	case http.MethodDelete:
-		deleted := h.Store.DeleteUserByID(id)
-		if !deleted {
-			http.Error(w, "user not found", http.StatusNotFound)
+		// Store me user create karvao (validation store karega)
+		createdUser, err := h.Store.CreateUser(input)
+		if err != nil {
+			// Validation fail => 400
+			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 
-		// success response
-		json.NewEncoder(w).Encode(map[string]string{
-			"message": "user deleted",
-		})
+		// Success => 201 Created
+		w.WriteHeader(http.StatusCreated)
+
+		// Created user JSON me return
+		json.NewEncoder(w).Encode(createdUser)
 		return
 
-	// other methods not allowed
+	// -----------------------------
+	// Any other method => 405
+	// -----------------------------
 	default:
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 		return
 	}
 }
 
+// UserByIDHandler /users/{id} route handle karega
+// GET    /users/{id} -> single user
+// DELETE /users/{id} -> delete user
+// PUT    /users/{id} -> update user
+func (h *UserHandler) UserByIDHandler(w http.ResponseWriter, r *http.Request) {
 
+	// Response JSON me bhejna hai
+	w.Header().Set("Content-Type", "application/json")
 
+	// URL example: /users/5
+	// "/users/" prefix hata ke idStr = "5" nikalna
+	idStr := strings.TrimPrefix(r.URL.Path, "/users/")
+
+	// Agar idStr empty hai => /users/ (invalid)
+	if idStr == "" {
+		http.Error(w, "User ID is required", http.StatusBadRequest)
+		return
+	}
+
+	// idStr ko int me convert karo
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		// Agar number nahi hai => 400
+		http.Error(w, "User ID must be a number", http.StatusBadRequest)
+		return
+	}
+
+	// Ab method ke basis pe decide karo
+	switch r.Method {
+
+	// -----------------------------
+	// GET /users/{id}
+	// -----------------------------
+	case http.MethodGet:
+
+		// Store se user fetch karo
+		user, exists := h.Store.GetUserByID(id)
+		if !exists {
+			// User nahi mila => 404
+			http.Error(w, "user not found", http.StatusNotFound)
+			return
+		}
+
+		// User JSON me return
+		json.NewEncoder(w).Encode(user)
+		return
+
+	// -----------------------------
+	// DELETE /users/{id}
+	// -----------------------------
+	case http.MethodDelete:
+
+		// Store se delete karvao
+		deleted := h.Store.DeleteUserByID(id)
+		if !deleted {
+			// User nahi mila => 404
+			http.Error(w, "user not found", http.StatusNotFound)
+			return
+		}
+
+		// Success message JSON me
+		json.NewEncoder(w).Encode(map[string]string{
+			"message": "user deleted",
+		})
+		return
+
+	// -----------------------------
+	// PUT /users/{id}
+	// -----------------------------
+	case http.MethodPut:
+
+		// Update ke liye input JSON decode karna padega
+		var input model.User
+
+		// Body decode
+		err := json.NewDecoder(r.Body).Decode(&input)
+		if err != nil {
+			http.Error(w, "Invalid JSON body", http.StatusBadRequest)
+			return
+		}
+
+		// Store me update karvao
+		updatedUser, exists, err := h.Store.UpdateUserByID(id, input)
+
+		// User exist hi nahi karta => 404
+		if !exists {
+			http.Error(w, "user not found", http.StatusNotFound)
+			return
+		}
+
+		// Validation error => 400
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		// Updated user return
+		json.NewEncoder(w).Encode(updatedUser)
+		return
+
+	// -----------------------------
+	// Any other method => 405
+	// -----------------------------
+	default:
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+}
