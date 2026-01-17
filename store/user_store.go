@@ -7,6 +7,7 @@ import (
 
 	"github.com/tejasva-vardhan/go-user-api/model"
 )
+
 // Step 1: Data (Struct) - "Dukan mein kya-kya hoga?"
 // Sabse pehle socho ki aapko kya-kya store karna hai. Bina data ke logic nahi banta.
 
@@ -92,8 +93,24 @@ func (s *UserStore) CreateUser(user model.User) (model.User, error) {
 	// created user return
 	return user, nil
 }
-// func (s *UserStore) GetAllUsers() []model.User{
+// GetAllUsers saare users list me return karega
+func (s *UserStore) GetAllUsers() []model.User {
 
-// }
+	// lock for safe read
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	// slice banayi users store karne ke liye
+	result := make([]model.User, 0, len(s.users))
+
+	// map se ek ek user uthao
+	for _, user := range s.users {
+		result = append(result, user)
+	}
+
+	// list return
+	return result
+}
+
 
 
