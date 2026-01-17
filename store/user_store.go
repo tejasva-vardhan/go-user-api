@@ -92,5 +92,8 @@ func (s *UserStore) CreateUser(user model.User) (model.User, error) {
 	// created user return
 	return user, nil
 }
+// func (s *UserStore) GetAllUsers() []model.User{
+
+// }
 
 
