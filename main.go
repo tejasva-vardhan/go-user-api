@@ -3,6 +3,8 @@ package main
 import (
 	"log"
 	"net/http"
+	"github.com/tejasva-vardhan/go-user-api/db"
+
 
 	// Apna handler package import kar rahe hain
 	"github.com/tejasva-vardhan/go-user-api/handler"
@@ -10,6 +12,24 @@ import (
 )
 
 func main() {
+    database, err := db.OpenSQLite()
+if err != nil {
+	log.Fatal(err)
+} // db open failed
+
+defer database.Close() // cleanup
+
+err = db.Migrate(database)
+if err != nil {
+	log.Fatal(err)
+} // migration failed
+
+log.Println("DB OK ✅ Migration OK ✅")
+
+
+
+
+
 
 	// (1) Store create
 	userStore := store.NewUserStore()
