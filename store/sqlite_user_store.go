@@ -100,3 +100,30 @@ func (s *SQLiteUserStore) GetUserByID(ctx context.Context, id int64) (model.User
 
 	return u, nil
 }
+// UpdateUser updates name/email by id
+func (s *SQLiteUserStore) UpdateUser(ctx context.Context, id int64, user model.User) (model.User, error) {
+
+	// Query: update user fields
+	query := `UPDATE users SET name = ?, email = ? WHERE id = ?`
+
+	// ExecContext = update run
+	result, err := s.DB.ExecContext(ctx, query, user.Name, user.Email, id)
+	if err != nil {
+		return model.User{}, fmt.Errorf("update user failed: %w", err)
+	} // update failed
+
+	// RowsAffected = check if any row updated
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return model.User{}, fmt.Errorf("rows affected check failed: %w", err)
+	} // check failed
+
+	// If 0 rows affected => user not found
+	if affected == 0 {
+		return model.User{}, fmt.Errorf("user not found")
+	} // not found
+
+	// return updated user
+	user.ID = id
+	return user, nil
+}
