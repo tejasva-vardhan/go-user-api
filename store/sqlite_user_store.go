@@ -78,3 +78,25 @@ func (s *SQLiteUserStore) GetAllUsers(ctx context.Context) ([]model.User, error)
 
 	return users, nil
 }
+// GetUserByID returns one user by id
+func (s *SQLiteUserStore) GetUserByID(ctx context.Context, id int64) (model.User, error) {
+
+	// Query: ek user fetch karo
+	query := `SELECT id, name, email FROM users WHERE id = ?`
+
+	var u model.User // user object
+
+	// QueryRowContext = single row
+	err := s.DB.QueryRowContext(ctx, query, id).Scan(&u.ID, &u.Name, &u.Email)
+	if err != nil {
+
+		// If no user found
+		if err == sql.ErrNoRows {
+			return model.User{}, fmt.Errorf("user not found")
+		} // not found
+
+		return model.User{}, fmt.Errorf("get user failed: %w", err)
+	} // query failed
+
+	return u, nil
+}
