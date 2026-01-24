@@ -8,7 +8,7 @@ import (
 
 // UserStore defines what operations our storage must support
 // Handler ko farak nahi padega store in-memory hai ya DB based
-type UUserRepository interface {
+type UserRepository interface {
 
 	// CreateUser inserts a new user and returns created user with ID
 	CreateUser(ctx context.Context, user model.User) (model.User, error)
