@@ -42,9 +42,9 @@ type UserStore struct {
 	nextID int64
 }
 
-func NewUserStore() *UserStore{
+func NewUserStore() *UserStore {
 	return &UserStore{
-		users: make(map[int64]model.User),
+		users:  make(map[int64]model.User),
 		nextID: 1,
 	}
 }
@@ -93,6 +93,7 @@ func (s *UserStore) CreateUser(user model.User) (model.User, error) {
 	// created user return
 	return user, nil
 }
+
 // GetAllUsers saare users list me return karega
 func (s *UserStore) GetAllUsers() []model.User {
 
@@ -111,6 +112,7 @@ func (s *UserStore) GetAllUsers() []model.User {
 	// list return
 	return result
 }
+
 // GetUserByID ek specific user return karta hai by id
 func (s *UserStore) GetUserByID(id int64) (model.User, bool) {
 
@@ -125,6 +127,7 @@ func (s *UserStore) GetUserByID(id int64) (model.User, bool) {
 	// exists false => user nahi mila
 	return user, exists
 }
+
 // DeleteUserByID given id wala user delete karta hai
 func (s *UserStore) DeleteUserByID(id int64) bool {
 
@@ -143,6 +146,7 @@ func (s *UserStore) DeleteUserByID(id int64) bool {
 
 	return true // delete success
 }
+
 // UpdateUserByID given id wale user ko update karta hai
 func (s *UserStore) UpdateUserByID(id int64, input model.User) (model.User, bool, error) {
 
@@ -180,9 +184,3 @@ func (s *UserStore) UpdateUserByID(id int64, input model.User) (model.User, bool
 
 	return updated, true, nil
 }
-
-
-
-
-
-

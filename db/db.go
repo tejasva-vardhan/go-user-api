@@ -6,7 +6,6 @@ import (
 	"os"
 
 	_ "modernc.org/sqlite"
-
 )
 
 // OpenSQLite opens SQLite database connection

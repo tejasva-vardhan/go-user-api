@@ -40,6 +40,7 @@ func (s *SQLiteUserStore) CreateUser(ctx context.Context, user model.User) (mode
 	user.ID = id // set generated id
 	return user, nil
 }
+
 // GetAllUsers returns all users from DB
 func (s *SQLiteUserStore) GetAllUsers(ctx context.Context) ([]model.User, error) {
 
@@ -78,6 +79,7 @@ func (s *SQLiteUserStore) GetAllUsers(ctx context.Context) ([]model.User, error)
 
 	return users, nil
 }
+
 // GetUserByID returns one user by id
 func (s *SQLiteUserStore) GetUserByID(ctx context.Context, id int64) (model.User, error) {
 
@@ -100,6 +102,7 @@ func (s *SQLiteUserStore) GetUserByID(ctx context.Context, id int64) (model.User
 
 	return u, nil
 }
+
 // UpdateUser updates name/email by id
 func (s *SQLiteUserStore) UpdateUser(ctx context.Context, id int64, user model.User) (model.User, error) {
 
@@ -127,6 +130,7 @@ func (s *SQLiteUserStore) UpdateUser(ctx context.Context, id int64, user model.U
 	user.ID = id
 	return user, nil
 }
+
 // DeleteUser deletes user by id
 func (s *SQLiteUserStore) DeleteUser(ctx context.Context, id int64) error {
 
@@ -152,4 +156,3 @@ func (s *SQLiteUserStore) DeleteUser(ctx context.Context, id int64) error {
 
 	return nil
 }
-

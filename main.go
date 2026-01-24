@@ -1,10 +1,9 @@
 package main
 
 import (
+	"github.com/tejasva-vardhan/go-user-api/db"
 	"log"
 	"net/http"
-	"github.com/tejasva-vardhan/go-user-api/db"
-
 
 	// Apna handler package import kar rahe hain
 	"github.com/tejasva-vardhan/go-user-api/handler"
@@ -12,36 +11,30 @@ import (
 )
 
 func main() {
-    database, err := db.OpenSQLite()
-if err != nil {
-	log.Fatal(err)
-} // db open failed
+	database, err := db.OpenSQLite()
+	if err != nil {
+		log.Fatal(err)
+	} // db open failed
 
-defer database.Close() // cleanup
+	defer database.Close() // cleanup
 
-err = db.Migrate(database)
-if err != nil {
-	log.Fatal(err)
-} // migration failed
+	err = db.Migrate(database)
+	if err != nil {
+		log.Fatal(err)
+	} // migration failed
 
-log.Println("DB OK ✅ Migration OK ✅")
-
-
-
-
-
+	log.Println("DB OK ✅ Migration OK ✅")
 
 	// (1) Store create
-	userStore := store.NewUserStore()
+	userRepo := store.NewSQLiteUserStore(database)
 
 	// (2) Handler create (store inject)
-	userHandler := handler.NewUserHandler(userStore)
+	userHandler := handler.NewUserHandler(userRepo)
 
 	// (3) Routes register
 	http.HandleFunc("/health", handler.HealthHandler)
 	http.HandleFunc("/users", userHandler.UsersHandler)
-    http.HandleFunc("/users/", userHandler.UserByIDHandler)
-
+	http.HandleFunc("/users/", userHandler.UserByIDHandler)
 
 	log.Println("Server running on http://localhost:8080")
 	log.Fatal(http.ListenAndServe(":8080", nil))

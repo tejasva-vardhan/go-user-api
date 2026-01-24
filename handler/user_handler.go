@@ -3,23 +3,21 @@ package handler
 import (
 	"encoding/json" // JSON decode/encode ke liye
 	"net/http"      // HTTP methods + status codes ke liye
-	"strconv"       // string -> int convert karne ke liye
+	"strconv"       // string -> int64 convert karne ke liye
 	"strings"       // URL se id extract karne ke liye
 
 	"github.com/tejasva-vardhan/go-user-api/model" // User struct
-	"github.com/tejasva-vardhan/go-user-api/store" // Store methods
+	"github.com/tejasva-vardhan/go-user-api/store" // Repository interface
 )
 
-// UserHandler ka kaam: HTTP request ko store se connect karna
+// UserHandler ka kaam: HTTP request ko store (repo) se connect karna
 type UserHandler struct {
-	Store *store.UserStore // Store dependency (data yahi handle karega)
+	Store store.UserRepository // Ab handler interface pe depend karega (DB / memory dono support)
 }
 
 // NewUserHandler constructor: store attach karke handler return karta hai
-func NewUserHandler(s *store.UserStore) *UserHandler {
-	return &UserHandler{
-		Store: s, // handler ke andar store set
-	}
+func NewUserHandler(s store.UserRepository) *UserHandler {
+	return &UserHandler{Store: s}
 }
 
 // UsersHandler /users route handle karega
@@ -38,8 +36,12 @@ func (h *UserHandler) UsersHandler(w http.ResponseWriter, r *http.Request) {
 	// -----------------------------
 	case http.MethodGet:
 
-		// Store se saare users nikaal lo
-		users := h.Store.GetAllUsers()
+		// Store se saare users nikaal lo (DB se)
+		users, err := h.Store.GetAllUsers(r.Context())
+		if err != nil {
+			http.Error(w, `{"error":"failed to fetch users"}`, http.StatusInternalServerError)
+			return
+		} // db error
 
 		// JSON me encode karke response bhej do
 		json.NewEncoder(w).Encode(users)
@@ -57,17 +59,23 @@ func (h *UserHandler) UsersHandler(w http.ResponseWriter, r *http.Request) {
 		err := json.NewDecoder(r.Body).Decode(&input)
 		if err != nil {
 			// Invalid JSON => 400
-			http.Error(w, "Invalid JSON body", http.StatusBadRequest)
+			http.Error(w, `{"error":"invalid json body"}`, http.StatusBadRequest)
 			return
-		}
+		} // invalid json
 
-		// Store me user create karvao (validation store karega)
-		createdUser, err := h.Store.CreateUser(input)
-		if err != nil {
-			// Validation fail => 400
-			http.Error(w, err.Error(), http.StatusBadRequest)
+		// Basic validation (handler level)
+		if strings.TrimSpace(input.Name) == "" || strings.TrimSpace(input.Email) == "" {
+			http.Error(w, `{"error":"name and email are required"}`, http.StatusBadRequest)
 			return
-		}
+		} // validation fail
+
+		// Store me user create karvao
+		createdUser, err := h.Store.CreateUser(r.Context(), input)
+		if err != nil {
+			// DB insert error => 500 (unique email etc bhi yahi aa sakta hai)
+			http.Error(w, `{"error":"failed to create user"}`, http.StatusInternalServerError)
+			return
+		} // create failed
 
 		// Success => 201 Created
 		w.WriteHeader(http.StatusCreated)
@@ -80,7 +88,7 @@ func (h *UserHandler) UsersHandler(w http.ResponseWriter, r *http.Request) {
 	// Any other method => 405
 	// -----------------------------
 	default:
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		http.Error(w, `{"error":"method not allowed"}`, http.StatusMethodNotAllowed)
 		return
 	}
 }
@@ -100,17 +108,17 @@ func (h *UserHandler) UserByIDHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Agar idStr empty hai => /users/ (invalid)
 	if idStr == "" {
-		http.Error(w, "User ID is required", http.StatusBadRequest)
+		http.Error(w, `{"error":"user id is required"}`, http.StatusBadRequest)
 		return
-	}
+	} // missing id
 
-	// idStr ko int me convert karo
+	// idStr ko int64 me convert karo
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
 		// Agar number nahi hai => 400
-		http.Error(w, "User ID must be a number", http.StatusBadRequest)
+		http.Error(w, `{"error":"user id must be a number"}`, http.StatusBadRequest)
 		return
-	}
+	} // invalid id
 
 	// Ab method ke basis pe decide karo
 	switch r.Method {
@@ -121,12 +129,12 @@ func (h *UserHandler) UserByIDHandler(w http.ResponseWriter, r *http.Request) {
 	case http.MethodGet:
 
 		// Store se user fetch karo
-		user, exists := h.Store.GetUserByID(id)
-		if !exists {
+		user, err := h.Store.GetUserByID(r.Context(), id)
+		if err != nil {
 			// User nahi mila => 404
-			http.Error(w, "user not found", http.StatusNotFound)
+			http.Error(w, `{"error":"user not found"}`, http.StatusNotFound)
 			return
-		}
+		} // not found / db error
 
 		// User JSON me return
 		json.NewEncoder(w).Encode(user)
@@ -138,17 +146,15 @@ func (h *UserHandler) UserByIDHandler(w http.ResponseWriter, r *http.Request) {
 	case http.MethodDelete:
 
 		// Store se delete karvao
-		deleted := h.Store.DeleteUserByID(id)
-		if !deleted {
+		err := h.Store.DeleteUser(r.Context(), id)
+		if err != nil {
 			// User nahi mila => 404
-			http.Error(w, "user not found", http.StatusNotFound)
+			http.Error(w, `{"error":"user not found"}`, http.StatusNotFound)
 			return
-		}
+		} // delete failed
 
-		// Success message JSON me
-		json.NewEncoder(w).Encode(map[string]string{
-			"message": "user deleted",
-		})
+		// Success => 204 No Content (best practice)
+		w.WriteHeader(http.StatusNoContent)
 		return
 
 	// -----------------------------
@@ -162,24 +168,23 @@ func (h *UserHandler) UserByIDHandler(w http.ResponseWriter, r *http.Request) {
 		// Body decode
 		err := json.NewDecoder(r.Body).Decode(&input)
 		if err != nil {
-			http.Error(w, "Invalid JSON body", http.StatusBadRequest)
+			http.Error(w, `{"error":"invalid json body"}`, http.StatusBadRequest)
 			return
-		}
+		} // invalid json
+
+		// Basic validation
+		if strings.TrimSpace(input.Name) == "" || strings.TrimSpace(input.Email) == "" {
+			http.Error(w, `{"error":"name and email are required"}`, http.StatusBadRequest)
+			return
+		} // validation fail
 
 		// Store me update karvao
-		updatedUser, exists, err := h.Store.UpdateUserByID(id, input)
-
-		// User exist hi nahi karta => 404
-		if !exists {
-			http.Error(w, "user not found", http.StatusNotFound)
-			return
-		}
-
-		// Validation error => 400
+		updatedUser, err := h.Store.UpdateUser(r.Context(), id, input)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			// user not found => 404
+			http.Error(w, `{"error":"user not found"}`, http.StatusNotFound)
 			return
-		}
+		} // update failed
 
 		// Updated user return
 		json.NewEncoder(w).Encode(updatedUser)
@@ -189,7 +194,7 @@ func (h *UserHandler) UserByIDHandler(w http.ResponseWriter, r *http.Request) {
 	// Any other method => 405
 	// -----------------------------
 	default:
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		http.Error(w, `{"error":"method not allowed"}`, http.StatusMethodNotAllowed)
 		return
 	}
 }
