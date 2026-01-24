@@ -5,7 +5,7 @@ package model
 type User struct {
 
 	// ID user ka unique identifier hoga
-	ID int `json:"id"`
+	ID int64 `json:"id"`
 
 	// Name user ka naam store karega
 	Name string `json:"name"`

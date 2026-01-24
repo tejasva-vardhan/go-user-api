@@ -105,7 +105,7 @@ func (h *UserHandler) UserByIDHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// idStr ko int me convert karo
-	id, err := strconv.Atoi(idStr)
+	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
 		// Agar number nahi hai => 400
 		http.Error(w, "User ID must be a number", http.StatusBadRequest)

@@ -36,15 +36,15 @@ type UserStore struct {
 	mu sync.Mutex
 
 	// users map: key = user ID, value = User struct
-	users map[int]model.User
+	users map[int64]model.User
 
 	// nextID naya user create karte waqt ID assign karega
-	nextID int
+	nextID int64
 }
 
 func NewUserStore() *UserStore{
 	return &UserStore{
-		users: make(map[int]model.User),
+		users: make(map[int64]model.User),
 		nextID: 1,
 	}
 }
@@ -112,7 +112,7 @@ func (s *UserStore) GetAllUsers() []model.User {
 	return result
 }
 // GetUserByID ek specific user return karta hai by id
-func (s *UserStore) GetUserByID(id int) (model.User, bool) {
+func (s *UserStore) GetUserByID(id int64) (model.User, bool) {
 
 	// lock => safe read
 	s.mu.Lock()
@@ -126,7 +126,7 @@ func (s *UserStore) GetUserByID(id int) (model.User, bool) {
 	return user, exists
 }
 // DeleteUserByID given id wala user delete karta hai
-func (s *UserStore) DeleteUserByID(id int) bool {
+func (s *UserStore) DeleteUserByID(id int64) bool {
 
 	// lock => safe write
 	s.mu.Lock()
@@ -144,7 +144,7 @@ func (s *UserStore) DeleteUserByID(id int) bool {
 	return true // delete success
 }
 // UpdateUserByID given id wale user ko update karta hai
-func (s *UserStore) UpdateUserByID(id int, input model.User) (model.User, bool, error) {
+func (s *UserStore) UpdateUserByID(id int64, input model.User) (model.User, bool, error) {
 
 	// lock => safe write
 	s.mu.Lock()
