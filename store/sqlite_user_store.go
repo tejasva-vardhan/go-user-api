@@ -127,3 +127,29 @@ func (s *SQLiteUserStore) UpdateUser(ctx context.Context, id int64, user model.U
 	user.ID = id
 	return user, nil
 }
+// DeleteUser deletes user by id
+func (s *SQLiteUserStore) DeleteUser(ctx context.Context, id int64) error {
+
+	// Query: delete user
+	query := `DELETE FROM users WHERE id = ?`
+
+	// ExecContext = delete run
+	result, err := s.DB.ExecContext(ctx, query, id)
+	if err != nil {
+		return fmt.Errorf("delete user failed: %w", err)
+	} // delete failed
+
+	// RowsAffected = check if deleted
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("rows affected check failed: %w", err)
+	} // check failed
+
+	// If nothing deleted => user not found
+	if affected == 0 {
+		return fmt.Errorf("user not found")
+	} // not found
+
+	return nil
+}
+
